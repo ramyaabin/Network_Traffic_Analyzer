@@ -1,0 +1,63 @@
+INTEGRATION & QA NOTES
+============================================
+Drop-in replacement for the project folder. Only main.py and page_summary.py
+were modified; every other file is unchanged from the original upload.
+
+CHANGES MADE
+------------
+1. main.py
+   - Imports analyzer.py (Jasmine's analysis/anomaly-detection module).
+   - New App._run_anomaly_scan() runs every ~3s and connects
+     analyzer.detect_high_traffic_sources(), detect_icmp_flood(), and
+     detect_suspicious_ports() into the live MON.alerts feed, with a
+     dedup set so the same finding isn't logged on every tick.
+   - Suspicious-port packets are retroactively tagged pkt["threat"]="Port Scan"
+     so the Packet table / dashboard mini-table colour them immediately.
+   - _clear() now also resets the dedup set and tick counter.
+
+2. page_summary.py
+   - Added a "FULL REPORT (CSV+JSON)" button that calls
+     analyzer.export_summary_to_csv() / export_summary_to_json(), so the
+     GUI can generate Jasmine's full traffic + anomaly report, not just a
+     raw packet dump.
+
+BUGS FOUND
+----------
+- backend.py never set a packet's "threat" to anything but "Normal" during
+  live capture, and analyzer.py (the anomaly-detection engine) was never
+  imported anywhere outside itself. Result: the Alerts page and dashboard
+  alert count always showed 0/empty, no matter what traffic occurred, even
+  though the detection logic itself was fully correct in isolation. Fixed
+  by the main.py changes above.
+- sidebar.py and packet_table.py are dead code: not imported by main.py
+  (tabbar.py / page_packets.py replaced them), and they reference theme
+  tokens that no longer exist in theme.py (BG_PANEL, BORDER, TEXT_MUTED,
+  BG_RAISED, ACCENT_DIM, FONT_MONO, mono(), PROTO, etc. — theme.py only
+  defines PANEL, BRD, TEXT2, RAISED, ACC2, PROTO_C, FM/FMB/FMS...).
+  Instantiating Sidebar or PacketTable today raises NameError. They are
+  left in place (unused, harmless) — recommend either deleting them before
+  final submission or updating them to the current theme if the team wants
+  to switch the GUI layout to use them later.
+
+TESTING PERFORMED
+------------------
+No display/tkinter binding or root-level packet capture was available in
+the environment used to prepare this patch, so GUI/live-capture testing
+could not be run end-to-end here. Instead:
+  - python3 -m py_compile on every module — all compile cleanly.
+  - Static analysis confirmed analyzer.py / sidebar.py / packet_table.py
+    import graphs and the theme-token mismatches above.
+  - Headless dynamic test: fed 574 synthetic packets (incl. a simulated
+    port scanner, ICMP flood, and high-traffic source) directly into
+    Monitor.packets, then ran analyzer.run_static_tests() — 7/7 passed —
+    and analyzer.run_anomaly_detection() — correctly found all 3 injected
+    attack patterns.
+  - Replayed the new App._run_anomaly_scan() logic against the same
+    Monitor across multiple simulated refresh ticks: confirmed alerts fire
+    exactly once per finding (no duplicate spam on repeated ticks), and
+    matching packets get retroactively tagged for the live tables.
+
+Recommend re-running the app locally (with tkinter + scapy + admin/root
+privileges for packet capture) for a final live, on-screen pass before
+the demo — this patch was verified at the logic level, not via the actual
+rendered GUI.

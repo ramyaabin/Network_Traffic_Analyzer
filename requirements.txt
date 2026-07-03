@@ -1,0 +1,9 @@
+# Network Traffic Analyzer — GUI Dependencies
+# Install with: pip install -r requirements.txt
+
+matplotlib>=3.7.0
+
+# tkinter is bundled with Python — no pip install needed.
+# Optional: uncomment when integrating Ankit's real capture module:
+# scapy>=2.5.0
+# pyshark>=0.6
