@@ -1,4 +1,6 @@
-Network Traffic Analyzer & Monitoring System
+
+**Software Security Project**  
+**Network Traffic Analyzer & Monitoring System**
 
 A real-time network traffic analyzer with a Tkinter GUI dashboard. It captures live packets, classifies them by protocol, visualizes traffic through charts, detects suspicious activity, and exports analysis reports.
 
